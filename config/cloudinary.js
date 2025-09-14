@@ -3,11 +3,7 @@ const { CloudinaryStorage } = require('multer-storage-cloudinary');
 
 
 require('dotenv').config({ debug: false });
-// cloudinary.config({
-//   cloud_name: 'dxcphbysv',
-//   api_key:788173235961928,
-//   api_secret: '9IKBS6_RWRxtIbWCdVSCM-T9HBI'
-// });
+
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
