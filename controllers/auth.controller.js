@@ -92,3 +92,48 @@ exports.getProfile = async (req, res, next) => {
     return res.status(401).json({ message: "Invalid or expired token" });
   }
 };
+exports.updateProfile = async (req, res, next) => {
+  try {
+    const token = req.headers.authorization?.split(" ")[1]; // Bearer <token>
+    if (!token) {
+      return res.status(401).json({ message: "No token provided" });
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const user = await User.findById(decoded.userId);
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const { name, email, password } = req.body;
+
+    // Update fields if provided
+    if (name) user.name = name;
+    if (email) user.email = email;
+
+    // Update password only if it's provided
+    if (password) {
+      const bcrypt = require("bcryptjs");
+      const salt = await bcrypt.genSalt(10);
+      user.password = await bcrypt.hash(password, salt);
+    }
+
+    await user.save();
+
+    // Exclude password in response
+    const { password: _, ...updatedUser } = user.toObject();
+
+    res.status(200).json({
+      message: "Profile updated successfully",
+      user: updatedUser,
+    });
+
+  } catch (err) {
+    console.error(err);
+    if (err.name === "JsonWebTokenError" || err.name === "TokenExpiredError") {
+      return res.status(401).json({ message: "Invalid or expired token" });
+    }
+    res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
