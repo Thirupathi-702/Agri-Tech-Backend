@@ -1,7 +1,7 @@
 const User = require('../models/User');
 const jwt = require('jsonwebtoken');
 const bcrypt = require("bcryptjs");
-
+const Cart = require("../models/Cart");
 
 // Sign up controller
 exports.signup = async (req, res, next) => {
@@ -72,28 +72,60 @@ exports.signin = async (req, res, next) => {
 };
 
 
-
-exports.getProfile = async (req, res, next) => {
+exports.getProfile = async (req, res) => {
   try {
-    const token = req.headers.authorization?.split(" ")[1]; // Bearer <token>
-
-    if (!token) {
-      return res.status(401).json({ message: "No token provided" });
-    }
+    const token = req.headers.authorization?.split(" ")[1];
+    if (!token) return res.status(401).json({ message: "No token provided" });
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    if (!decoded) return res.status(401).json({ message: "Invalid token" });
+
     const user = await User.findById(decoded.userId).select("-password");
+    if (!user) return res.status(404).json({ message: "User not found" });
 
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
+    // ✅ Fetch the user's cart from Cart collection
+    const cart = await Cart.findOne({ user: user._id })
+      .populate("items.product", "productName price images SKU category brand");
 
-    res.status(200).json({ user });
-
+    res.status(200).json({
+      user,
+      cart: cart ? cart.items : [] // Return cart items alongside user info
+    });
   } catch (err) {
     return res.status(401).json({ message: "Invalid or expired token" });
   }
 };
+
+// exports.getProfile = async (req, res, next) => {
+//   try {
+//     const token = req.headers.authorization?.split(" ")[1]; // Bearer <token>
+
+//     if (!token) {
+//       return res.status(401).json({ message: "No token provided" });
+//     }
+
+//     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+//     if (!decoded) {
+//       return res.status(401).json({ message: "Invalid token" });
+//     }
+
+//     const user = await User.findById(decoded.userId)
+//       .select("-password")
+//       .populate("cart.product", "productName price images SKU category brand"); // only select needed fields
+
+//     if (!user) {
+//       return res.status(404).json({ message: "User not found" });
+//     }
+
+//     res.status(200).json({ user });
+
+
+
+//   } catch (err) {
+//     return res.status(401).json({ message: "Invalid or expired token" });
+//   }
+// };
 exports.updateProfile = async (req, res, next) => {
   try {
     const token = req.headers.authorization?.split(" ")[1]; // Bearer <token>
