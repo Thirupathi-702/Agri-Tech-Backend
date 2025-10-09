@@ -3,12 +3,14 @@ const router = express.Router();
 const multer = require('multer');
 const { storage } = require('../config/cloudinary');
 const productController = require('../controllers/product.controller');
-
+const adminOnly = require("../middleware/adminOnly");
+const auth = require("../middleware/auth");
 const upload = multer({ storage });
 
 
-router.post('/upload', upload.array('images', 5), productController.createProduct);
-
+router.post('/upload', auth,adminOnly, upload.array('images', 5), productController.createProduct);
+router.put('/update/:id', auth,adminOnly, upload.array('images', 5), productController.updateProduct);
+router.delete('/delete/:id', auth,adminOnly, productController.deleteProduct);
 
 router.get('/', productController.getAllProducts);
 

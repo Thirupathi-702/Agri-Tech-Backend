@@ -1,35 +1,37 @@
 const User = require('../models/User');
 const jwt = require('jsonwebtoken');
+const bcrypt = require("bcryptjs");
+
 
 // Sign up controller
 exports.signup = async (req, res, next) => {
   try {
-    
-    const { name, email, password} = req.body;
-     if (!name || !email || !password ) {
+
+    const { name, email, password } = req.body;
+    if (!name || !email || !password) {
       return res.status(400).json({ message: 'All fields (name, email, password) are required' });
     }
-    
+
     // Check if user exists
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res.status(400).json({ message: 'Email already in use' });
     }
-    
+
     // Create new user
     const user = new User({ name, email, password });
     await user.save();
-    
+
     // Create token
     const token = jwt.sign(
       { userId: user._id },
       process.env.JWT_SECRET,
       { expiresIn: '1h' }
     );
-    
+
     res.status(201).json({ token, userId: user._id });
   } catch (err) {
-    res.status(500).json({ "err":err });
+    res.status(500).json({ "err": err });
     next(err);
   }
 };
@@ -38,26 +40,26 @@ exports.signup = async (req, res, next) => {
 exports.signin = async (req, res, next) => {
   try {
     const { email, password } = req.body;
-    
+
     // Find user
     const user = await User.findOne({ email });
     if (!user) {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
-    
+
     // Check password
     const isMatch = await user.comparePassword(password);
     if (!isMatch) {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
-    
+
     // Create token
     const token = jwt.sign(
-      { userId: user._id},
+      { userId: user._id },
       process.env.JWT_SECRET,
       { expiresIn: '1h' }
     );
-      const { password: _, ...userWithoutPassword } = user.toObject();
+    const { password: _, ...userWithoutPassword } = user.toObject();
 
     res.status(200).json({
       token,
@@ -106,18 +108,10 @@ exports.updateProfile = async (req, res, next) => {
       return res.status(404).json({ message: "User not found" });
     }
 
-    const { name, email, password } = req.body;
+    const { name } = req.body;
 
-    // Update fields if provided
+    // Only allow updating name
     if (name) user.name = name;
-    if (email) user.email = email;
-
-    // Update password only if it's provided
-    if (password) {
-      const bcrypt = require("bcryptjs");
-      const salt = await bcrypt.genSalt(10);
-      user.password = await bcrypt.hash(password, salt);
-    }
 
     await user.save();
 
@@ -135,5 +129,42 @@ exports.updateProfile = async (req, res, next) => {
       return res.status(401).json({ message: "Invalid or expired token" });
     }
     res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
+
+
+
+// controllers/userController.js
+
+exports.updatePassword = async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(" ")[1]; // Bearer <token>
+    const { currentPassword, newPassword } = req.body;
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ message: 'Both current and new passwords are required' });
+    }
+
+    if (!token) {
+      return res.status(401).json({ message: "No token provided" });
+    }
+
+    // Find user by id (assuming you attach req.user from auth middleware)
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const user = await User.findById(decoded.userId);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    // Check if current password matches
+    const isMatch = await bcrypt.compare(currentPassword, user.password);
+    if (!isMatch) return res.status(400).json({ message: 'Current password is incorrect' });
+
+    // Update to new password
+    user.password = newPassword; // pre-save hook will hash automatically
+    await user.save();
+
+    res.status(200).json({ message: 'Password updated successfully' });
+  } catch (err) {
+    res.status(500).json({ message: 'Error updating password', error: err.message });
   }
 };
