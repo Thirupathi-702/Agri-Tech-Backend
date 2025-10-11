@@ -13,7 +13,7 @@ const createAdmin = async () => {
         const admin = await User.create({
             name: 'Admin',
             email: 'admin@example.com',
-            password: Process.env.ADMIN_PASSWORD,
+            password: process.env.ADMIN_PASSWORD,
             role: 'admin'
         });
 

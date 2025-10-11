@@ -2,20 +2,20 @@ const User = require('../models/User');
 const jwt = require('jsonwebtoken');
 const bcrypt = require("bcryptjs");
 const Cart = require("../models/Cart");
-
+const { sendResponse } = require("../utils/response");
 // Sign up controller
 exports.signup = async (req, res, next) => {
   try {
 
     const { name, email, password } = req.body;
     if (!name || !email || !password) {
-      return res.status(400).json({ message: 'All fields (name, email, password) are required' });
+      return sendResponse(res, 400, false, "All fields (name, email, password) are required");
     }
 
     // Check if user exists
     const existingUser = await User.findOne({ email });
     if (existingUser) {
-      return res.status(400).json({ message: 'Email already in use' });
+      return sendResponse(res, 400, false, "Email already in use");
     }
 
     // Create new user
@@ -29,10 +29,10 @@ exports.signup = async (req, res, next) => {
       { expiresIn: '365d' }
     );
 
-    res.status(201).json({ token, userId: user._id });
+    return sendResponse(res, 201, true, "User registered successfully", { token, userId: user._id });
   } catch (err) {
-    res.status(500).json({ "err": err });
-    next(err);
+    console.error("Signup Error:", err);
+    return sendResponse(res, 500, false, "Internal Server Error", { error: err.message });
   }
 };
 
@@ -44,13 +44,14 @@ exports.signin = async (req, res, next) => {
     // Find user
     const user = await User.findOne({ email });
     if (!user) {
-      return res.status(401).json({ message: 'Invalid credentials' });
+      return sendResponse(res, 401, false, "Invalid credentials");
     }
 
     // Check password
     const isMatch = await user.comparePassword(password);
     if (!isMatch) {
-      return res.status(401).json({ message: 'Invalid credentials' });
+      // return res.status(401).json({ message: 'Invalid credentials' });
+      return sendResponse(res, 401, false, "Invalid credentials");
     }
 
     // Create token
@@ -61,11 +62,8 @@ exports.signin = async (req, res, next) => {
     );
     const { password: _, ...userWithoutPassword } = user.toObject();
 
-    res.status(200).json({
-      token,
-      user: userWithoutPassword
-    });
-    //res.status(200).json({ token, userId: user._id,user });
+
+    return sendResponse(res, 200, true, "User signed in successfully", { token, user: userWithoutPassword });
   } catch (err) {
     next(err);
   }
@@ -75,69 +73,39 @@ exports.signin = async (req, res, next) => {
 exports.getProfile = async (req, res) => {
   try {
     const token = req.headers.authorization?.split(" ")[1];
-    if (!token) return res.status(401).json({ message: "No token provided" });
+    if (!token)
+      return sendResponse(res, 401, false, "No token provided");
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    if (!decoded) return res.status(401).json({ message: "Invalid token" });
+    if (!decoded) return sendResponse(res, 401, false, "Invalid token");
 
     const user = await User.findById(decoded.userId).select("-password");
-    if (!user) return res.status(404).json({ message: "User not found" });
+    if (!user) return sendResponse(res, 404, false, "User not found");
 
     // ✅ Fetch the user's cart from Cart collection
     const cart = await Cart.findOne({ user: user._id })
       .populate("items.product", "productName price images SKU category brand");
 
-    res.status(200).json({
-      user,
-      cart: cart ? cart.items : [] // Return cart items alongside user info
-    });
+
+    return sendResponse(res, 200, true, "Profile fetched successfully", { user, cart: cart ? cart.items : [] });
   } catch (err) {
-    return res.status(401).json({ message: "Invalid or expired token" });
+    return sendResponse(res, 401, false, "Invalid or expired token");
   }
 };
 
-// exports.getProfile = async (req, res, next) => {
-//   try {
-//     const token = req.headers.authorization?.split(" ")[1]; // Bearer <token>
 
-//     if (!token) {
-//       return res.status(401).json({ message: "No token provided" });
-//     }
-
-//     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-
-//     if (!decoded) {
-//       return res.status(401).json({ message: "Invalid token" });
-//     }
-
-//     const user = await User.findById(decoded.userId)
-//       .select("-password")
-//       .populate("cart.product", "productName price images SKU category brand"); // only select needed fields
-
-//     if (!user) {
-//       return res.status(404).json({ message: "User not found" });
-//     }
-
-//     res.status(200).json({ user });
-
-
-
-//   } catch (err) {
-//     return res.status(401).json({ message: "Invalid or expired token" });
-//   }
-// };
 exports.updateProfile = async (req, res, next) => {
   try {
     const token = req.headers.authorization?.split(" ")[1]; // Bearer <token>
     if (!token) {
-      return res.status(401).json({ message: "No token provided" });
+      return sendResponse(res, 401, false, "No token provided");
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     const user = await User.findById(decoded.userId);
 
     if (!user) {
-      return res.status(404).json({ message: "User not found" });
+      return sendResponse(res, 404, false, "User not found");
     }
 
     const { name } = req.body;
@@ -150,23 +118,21 @@ exports.updateProfile = async (req, res, next) => {
     // Exclude password in response
     const { password: _, ...updatedUser } = user.toObject();
 
-    res.status(200).json({
-      message: "Profile updated successfully",
-      user: updatedUser,
-    });
+
+    return sendResponse(res, 200, true, "Profile updated successfully", { user: updatedUser });
 
   } catch (err) {
     console.error(err);
     if (err.name === "JsonWebTokenError" || err.name === "TokenExpiredError") {
-      return res.status(401).json({ message: "Invalid or expired token" });
+      return sendResponse(res, 401, false, "Invalid or expired token");
     }
-    res.status(500).json({ message: "Server error", error: err.message });
+    return sendResponse(res, 500, false, "Server error", { error: err.message });
   }
 };
 
 
 
-// controllers/userController.js
+
 
 exports.updatePassword = async (req, res) => {
   try {
@@ -174,29 +140,29 @@ exports.updatePassword = async (req, res) => {
     const { currentPassword, newPassword } = req.body;
 
     if (!currentPassword || !newPassword) {
-      return res.status(400).json({ message: 'Both current and new passwords are required' });
+      return sendResponse(res, 400, false, "Both current and new passwords are required");
     }
 
     if (!token) {
-      return res.status(401).json({ message: "No token provided" });
+      return sendResponse(res, 401, false, "No token provided");
     }
 
-    // Find user by id (assuming you attach req.user from auth middleware)
+
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     const user = await User.findById(decoded.userId);
-    if (!user) return res.status(404).json({ message: 'User not found' });
+    if (!user) return sendResponse(res, 404, false, "User not found");
 
-    // Check if current password matches
+
     const isMatch = await bcrypt.compare(currentPassword, user.password);
-    if (!isMatch) return res.status(400).json({ message: 'Current password is incorrect' });
+    if (!isMatch) return sendResponse(res, 400, false, "Current password is incorrect");
 
-    // Update to new password
+
     user.password = newPassword; // pre-save hook will hash automatically
     await user.save();
 
-    res.status(200).json({ message: 'Password updated successfully' });
+    return sendResponse(res, 200, true, "Password updated successfully");
   } catch (err) {
-    res.status(500).json({ message: 'Error updating password', error: err.message });
+    return sendResponse(res, 500, false, "Error updating password", { error: err.message });
   }
 };
