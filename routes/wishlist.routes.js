@@ -4,12 +4,18 @@ const Wishlist = require("../models/Wishlist");
 const Product = require("../models/Product");
 const authMiddleware = require("../middleware/auth"); // JWT middleware
 const { sendResponse, successResponse, errorResponse } = require('../utils/response');
-// ✅ Get wishlist items
+
 router.get("/", authMiddleware, async (req, res) => {
     const userId = req.userId;
+
     try {
-        const wishlist = await Wishlist.findOne({ user: userId }).populate("products");
-        if (!wishlist) return sendResponse(res, 404, false, "Wishlist not found", { products: [] });
+        let wishlist = await Wishlist.findOne({ user: userId }).populate("products");
+
+
+        if (!wishlist) {
+            wishlist = new Wishlist({ user: userId, products: [] });
+            await wishlist.save();
+        }
 
         return sendResponse(res, 200, true, "Wishlist fetched successfully", { products: wishlist.products });
     } catch (err) {
@@ -17,7 +23,6 @@ router.get("/", authMiddleware, async (req, res) => {
     }
 });
 
-// ✅ Add product to wishlist
 router.post("/add/:productId", authMiddleware, async (req, res) => {
     try {
         const { productId } = req.params;
