@@ -9,4 +9,5 @@ router.use('/wishlist', require('./wishlist.routes'));
 
 router.use("/contact", require("./contactRoutes"));
 router.use("/admin/contacts", require("./contactAdminRoutes"));
+router.use("/orders", require("./orderroute"));
 module.exports = router;
