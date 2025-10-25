@@ -61,17 +61,18 @@ exports.updateCartQuantity = async (req, res) => {
 };
 
 exports.getCart = async (req, res) => {
-    try {
+  try {
+    const userId = req.userId;
+    const cart = await Cart.findOne({ user: userId }).populate("items.product");
 
-        const userId = req.userId;
-        //  console.log(userId)
-        const cart = await Cart.findOne({ user: userId }).populate("items.product");
-        if (!cart) return sendResponse(res, 404, false, "Cart not found", { cart: [] });
-
-        return sendResponse(res, 200, true, "Cart fetched successfully", { items: cart.items });
-    } catch (error) {
-        return sendResponse(res, 500, false, "Error fetching cart", { error: error.message });
+    if (!cart || cart.items.length === 0) {
+      return sendResponse(res, 200, true, "Cart is empty", { items: [] });
     }
+
+    return sendResponse(res, 200, true, "Cart fetched successfully", { items: cart.items });
+  } catch (error) {
+    return sendResponse(res, 500, false, "Error fetching cart", { error: error.message });
+  }
 };
 
 exports.removeFromCart = async (req, res) => {
