@@ -33,7 +33,7 @@ const UserSchema = new mongoose.Schema({
   }
 });
 
-module.exports = mongoose.model("User", UserSchema);
+
 
 // Hash password before saving
 UserSchema.pre('save', async function (next) {
