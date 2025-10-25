@@ -3,33 +3,58 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require("bcryptjs");
 const Cart = require("../models/Cart");
 const { sendResponse } = require("../utils/response");
+
+
+
+
 // Sign up controller
-exports.signup = async (req, res, next) => {
+
+
+exports.signup = async (req, res) => {
   try {
+    const { name, email, phone, password } = req.body;
 
-    const { name, email, password } = req.body;
-    if (!name || !email || !password) {
-      return sendResponse(res, 400, false, "All fields (name, email, password) are required");
+    // ✅ Basic validation
+    if (!name || !phone || !password) {
+      return sendResponse(res, 400, false, "Name, phone number, and password are required");
     }
 
-    // Check if user exists
-    const existingUser = await User.findOne({ email });
-    if (existingUser) {
-      return sendResponse(res, 400, false, "Email already in use");
+    // ✅ Check if phone already exists
+    const existingPhone = await User.findOne({ phone });
+    if (existingPhone) {
+      return sendResponse(res, 400, false, "Phone number already in use");
     }
 
-    // Create new user
-    const user = new User({ name, email, password });
+    // ✅ Check if email exists (only if provided)
+    if (email) {
+      const existingEmail = await User.findOne({ email });
+      if (existingEmail) {
+        return sendResponse(res, 400, false, "Email already in use");
+      }
+    }
+
+    // ✅ Create new user
+    const user = new User({
+      name,
+      phone,
+      email: email || null,
+      password
+    });
+
     await user.save();
 
-    // Create token
+    // ✅ Generate JWT token
     const token = jwt.sign(
       { userId: user._id },
       process.env.JWT_SECRET,
-      { expiresIn: '365d' }
+      { expiresIn: "365d" }
     );
 
-    return sendResponse(res, 201, true, "User registered successfully", { token, userId: user._id });
+    return sendResponse(res, 201, true, "User registered successfully", {
+      token,
+      userId: user._id
+    });
+
   } catch (err) {
     console.error("Signup Error:", err);
     return sendResponse(res, 500, false, "Internal Server Error", { error: err.message });
@@ -37,35 +62,86 @@ exports.signup = async (req, res, next) => {
 };
 
 // Sign in controller
+// exports.signin = async (req, res, next) => {
+//   try {
+//     const { email, password } = req.body;
+
+//     // Find user
+//     const user = await User.findOne({ email });
+//     if (!user) {
+//       return sendResponse(res, 401, false, "Invalid credentials");
+//     }
+
+//     // Check password
+//     const isMatch = await user.comparePassword(password);
+//     if (!isMatch) {
+//       // return res.status(401).json({ message: 'Invalid credentials' });
+//       return sendResponse(res, 401, false, "Invalid credentials");
+//     }
+
+//     // Create token
+//     const token = jwt.sign(
+//       { userId: user._id },
+//       process.env.JWT_SECRET,
+//       { expiresIn: '365d' }
+//     );
+//     const { password: _, ...userWithoutPassword } = user.toObject();
+
+
+//     return sendResponse(res, 200, true, "User signed in successfully", { token, user: userWithoutPassword });
+//   } catch (err) {
+//     next(err);
+//   }
+// };
+
 exports.signin = async (req, res, next) => {
   try {
-    const { email, password } = req.body;
+    const { identifier, password } = req.body; // identifier = email or phone
 
-    // Find user
-    const user = await User.findOne({ email });
-    if (!user) {
-      return sendResponse(res, 401, false, "Invalid credentials");
+    // ✅ Basic validation
+    if (!identifier || !password) {
+      return sendResponse(res, 400, false, "Email/Phone and password are required");
     }
 
-    // Check password
+    let user;
+
+    // ✅ Detect whether identifier is email or phone
+    const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(identifier);
+
+    if (isEmail) {
+      user = await User.findOne({ email: identifier });
+    } else {
+      user = await User.findOne({ phone: identifier });
+    }
+
+    if (!user) {
+      return sendResponse(res, 401, false, "Invalid email/phone or password");
+    }
+
+    // ✅ Check password
     const isMatch = await user.comparePassword(password);
     if (!isMatch) {
-      // return res.status(401).json({ message: 'Invalid credentials' });
-      return sendResponse(res, 401, false, "Invalid credentials");
+      return sendResponse(res, 401, false, "Invalid email/phone or password");
     }
 
-    // Create token
+    // ✅ Create JWT token
     const token = jwt.sign(
       { userId: user._id },
       process.env.JWT_SECRET,
-      { expiresIn: '365d' }
+      { expiresIn: "365d" }
     );
+
+    // Exclude password before sending response
     const { password: _, ...userWithoutPassword } = user.toObject();
 
+    return sendResponse(res, 200, true, "User signed in successfully", {
+      token,
+      user: userWithoutPassword
+    });
 
-    return sendResponse(res, 200, true, "User signed in successfully", { token, user: userWithoutPassword });
   } catch (err) {
-    next(err);
+    console.error("Signin Error:", err);
+    return sendResponse(res, 500, false, "Internal Server Error", { error: err.message });
   }
 };
 
