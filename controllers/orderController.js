@@ -2,7 +2,7 @@
 const Razorpay = require("razorpay");
 const crypto = require("crypto");
 const Order = require("../models/Order");
-
+const cartSchema = require("../models/Cart");
 const razorpay = new Razorpay({
     key_id: process.env.RAZORPAY_KEY_ID,
     key_secret: process.env.RAZORPAY_SECRET,
@@ -14,15 +14,15 @@ exports.createOrder = async (req, res) => {
         const { amount, items,address } = req.body;
         
         const userId = req.userId; // From auth middleware
-       
-        
-        const formattedItems = items.map((item) => ({
-            product: item.product._id,            
-            name: item.product.productName,      
-            price: item.product.price,            
-            quantity: item.quantity,       
-            images: item.product.images[0],      
-    }));
+       console.log("Creating order for user:", items);
+        const formattedItems=items
+    //     const formattedItems = items.map((item) => ({
+    //         product: item.product._id,            
+    //         name: item.product.productName,      
+    //         price: item.product.price,            
+    //         quantity: item.quantity,       
+    //         images: item.product.images[0],      
+    // }));
         // Create Razorpay order
         const options = {
             amount: amount * 100, // in paise
@@ -47,7 +47,7 @@ exports.createOrder = async (req, res) => {
 
         res.json({
             success: true,
-            orderId: order.id,
+           orderId: order.id,
             amount: order.amount,
             currency: order.currency,
             key: process.env.RAZORPAY_KEY_ID,
@@ -61,7 +61,7 @@ exports.createOrder = async (req, res) => {
 // ✅ Verify payment and update DB
 exports.verifyPayment = async (req, res) => {
     try {
-
+        const userId = req.userId;
         const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
 
         const sign = razorpay_order_id + "|" + razorpay_payment_id;
@@ -80,7 +80,10 @@ exports.verifyPayment = async (req, res) => {
                 },
                 { new: true }
             );
-
+       await cartSchema.findOneAndUpdate(
+        { user: userId },
+        { $set: { items: [] } }
+    );
             return res.json({ success: true, message: "Payment verified & order updated", order });
         } else {
             await Order.findOneAndUpdate(
