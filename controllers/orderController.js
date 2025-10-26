@@ -11,7 +11,7 @@ const razorpay = new Razorpay({
 // ✅ Create order and save in DB
 exports.createOrder = async (req, res) => {
     try {
-        const { amount, items } = req.body;
+        const { amount, items,address } = req.body;
         
         const userId = req.userId; // From auth middleware
        
@@ -36,6 +36,7 @@ exports.createOrder = async (req, res) => {
         const newOrder = new Order({
             user: userId,
             amount,
+            address,
             items: formattedItems,
             currency: "INR",
             razorpayOrderId: order.id,

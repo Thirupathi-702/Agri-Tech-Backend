@@ -12,6 +12,7 @@ const OrderSchema = new mongoose.Schema(
                     images: { type: String },
             },
         ],
+        address : {type : Object , required : true},
         amount: { type: Number, required: true },
         status: { type: String, default: "pending" },
         razorpayOrderId: { type: String },

@@ -7,60 +7,60 @@ const { sendResponse } = require("../utils/response");
 
 
 
-// Sign up controller
 
 
-exports.signup = async (req, res) => {
-  try {
-    const { name, email, phone, password } = req.body;
+// exports.signup = async (req, res) => {
+//   try {
+//     const { name, email, phone, password } = req.body;
 
-    // ✅ Basic validation
-    if (!name || !phone || !password) {
-      return sendResponse(res, 400, false, "Name, phone number, and password are required");
-    }
+//     // ✅ Basic validation
+//     if (!name || !phone || !password) {
+//       return sendResponse(res, 400, false, "Name, phone number, and password are required");
+//     }
 
-    // ✅ Check if phone already exists
-    const existingPhone = await User.findOne({ phone });
-    if (existingPhone) {
-      return sendResponse(res, 400, false, "Phone number already in use");
-    }
+//     // ✅ Check if phone already exists
+//     const existingPhone = await User.findOne({ phone });
+//     if (existingPhone) {
+//       return sendResponse(res, 400, false, "Phone number already in use");
+//     }
 
-    // ✅ Check if email exists (only if provided)
-    if (email) {
-      const existingEmail = await User.findOne({ email });
-      if (existingEmail) {
-        return sendResponse(res, 400, false, "Email already in use");
-      }
-    }
+//     // ✅ Check if email exists (only if provided)
+//     if (email) {
+//       const existingEmail = await User.findOne({ email });
+//       if (existingEmail) {
+//         return sendResponse(res, 400, false, "Email already in use");
+//       }
+//     }
 
-    // ✅ Create new user
-    const user = new User({
-      name,
-      phone,
-      email: email || null,
-      password
-    });
+//     // ✅ Create new user
+//     const user = new User({
+//       name,
+//       phone,
+//       email: email || null,
+//       password
+//     });
 
-    await user.save();
+//     await user.save();
 
-    // ✅ Generate JWT token
-    const token = jwt.sign(
-      { userId: user._id },
-      process.env.JWT_SECRET,
-      { expiresIn: "365d" }
-    );
+//     // ✅ Generate JWT token
+//     const token = jwt.sign(
+//       { userId: user._id },
+//       process.env.JWT_SECRET,
+//       { expiresIn: "365d" }
+//     );
 
-    return sendResponse(res, 201, true, "User registered successfully", {
-      token,
-      userId: user._id
-    });
+//     return sendResponse(res, 201, true, "User registered successfully", {
+//       token,
+//       userId: user._id
+//     });
 
-  } catch (err) {
-    console.error("Signup Error:", err);
-    return sendResponse(res, 500, false, "Internal Server Error", { error: err.message });
-  }
-};
-
+//   } catch (err) {
+//   if (err.code === 11000 && err.keyPattern && err.keyPattern.email) {
+//     return sendResponse(res, 400, false, "Email already in use");
+//   }
+//   throw err;
+// };
+// }
 // Sign in controller
 // exports.signin = async (req, res, next) => {
 //   try {
@@ -93,6 +93,61 @@ exports.signup = async (req, res) => {
 //     next(err);
 //   }
 // };
+exports.signup = async (req, res) => {
+  try {
+    const { name, email, phone, password } = req.body;
+const emailTrimmed = email ? email.trim() : "";
+
+    if (!name || !phone || !password) {
+      return sendResponse(res, 400, false, "Name, phone number, and password are required");
+    }
+
+
+    const existingPhone = await User.findOne({ phone });
+    if (existingPhone) {
+      return sendResponse(res, 400, false, "Phone number already in use");
+    }
+
+   
+    if (emailTrimmed) {
+      const existingEmail = await User.findOne({ email: emailTrimmed });
+      if (existingEmail) {
+        return sendResponse(res, 400, false, "Email already in use");
+      }
+    }
+
+   
+    const userData = {
+      name,
+      phone,
+      password,
+      email: emailTrimmed
+    };
+
+    // ✅ Create and save user
+    const user = new User(userData);
+    await user.save();
+
+    // ✅ Generate JWT token
+    const token = jwt.sign(
+      { userId: user._id },
+      process.env.JWT_SECRET,
+      { expiresIn: "365d" }
+    );
+
+    return sendResponse(res, 201, true, "User registered successfully", {
+      token,
+      userId: user._id,
+      name: user.name,
+      phone: user.phone,
+      email: emailTrimmed
+    });
+
+  } catch (err) {
+    console.error("Signup Error:", err);
+    return sendResponse(res, 500, false, "Internal Server Error", { error: err.message });
+  }
+};
 
 exports.signin = async (req, res, next) => {
   try {
@@ -184,10 +239,12 @@ exports.updateProfile = async (req, res, next) => {
       return sendResponse(res, 404, false, "User not found");
     }
 
-    const { name } = req.body;
+    const { name,email} = req.body;
 
     // Only allow updating name
     if (name) user.name = name;
+    if (email) user.email = email;
+
 
     await user.save();
 
