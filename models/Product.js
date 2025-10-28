@@ -10,7 +10,8 @@ const productSchema = new mongoose.Schema(
     category: { type: String },
     brand: { type: String },
     quantity: { type: Number, default: 0 },
-    description: { type: String },       // ✅ Added description field
+    description: { type: String }, 
+    youtubeUrl: { type: String },   
     images: [{ type: String }],
     rating: { type: Number, default: 0 },
     reviewCounts: { type: Number, default: 0 },
