@@ -11,7 +11,7 @@ const productSchema = new mongoose.Schema(
     brand: { type: String },
     quantity: { type: Number, default: 0 },
     description: { type: String }, 
-    youtubeUrl: { type: String },   
+    youTubeUrl: { type: String },   
     images: [{ type: String }],
     rating: { type: Number, default: 0 },
     reviewCounts: { type: Number, default: 0 },

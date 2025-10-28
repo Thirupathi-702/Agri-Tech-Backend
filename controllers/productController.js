@@ -2,6 +2,7 @@ const Product = require('../models/Product');
 const { sendResponse, successResponse, errorResponse } = require("../utils/response");
 
 exports.createProduct = async (req, res) => {
+ 
   try {
     const {
       productName,
@@ -54,7 +55,7 @@ exports.createProduct = async (req, res) => {
 
     // Save to DB
     await newProduct.save();
-
+    console.log("New product created:", newProduct);
     return successResponse(res, "Product created successfully", newProduct, 201);
 
   } catch (error) {
