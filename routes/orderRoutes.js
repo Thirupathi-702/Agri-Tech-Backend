@@ -14,5 +14,5 @@ router.post("/place-order", auth, createOrder);
 router.post("/verify-payment", verifyPayment);
 router.get("/my-orders", auth, getUserOrders);
 router.get("/all-orders",auth, adminOnly, getAllOrders); 
-router.get("/update-status/:orderId", auth, adminOnly, updateOrderStatus); 
+router.put("/update-status/:orderId", auth, adminOnly, updateOrderStatus); 
 module.exports = router;
