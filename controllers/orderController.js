@@ -40,7 +40,7 @@ exports.createOrder = async (req, res) => {
             items: formattedItems,
             currency: "INR",
             razorpayOrderId: order.id,
-            status: "created",
+            status: "Failed",
         });
 
         await newOrder.save();
