@@ -3,59 +3,120 @@ const Razorpay = require("razorpay");
 const crypto = require("crypto");
 const Order = require("../models/Order");
 const cartSchema = require("../models/Cart");
+const Product = require("../models/Product");
 const razorpay = new Razorpay({
     key_id: process.env.RAZORPAY_KEY_ID,
     key_secret: process.env.RAZORPAY_SECRET,
 });
 
 // ✅ Create order and save in DB
-exports.createOrder = async (req, res) => {
-    try {
-        const { amount, items,address } = req.body;
+// exports.createOrder = async (req, res) => {
+//     try {
+//         const { amount, items,address } = req.body;
         
-        const userId = req.userId; // From auth middleware
-       console.log("Creating order for user:", items);
-        const formattedItems=items
-    //     const formattedItems = items.map((item) => ({
-    //         product: item.product._id,            
-    //         name: item.product.productName,      
-    //         price: item.product.price,            
-    //         quantity: item.quantity,       
-    //         images: item.product.images[0],      
-    // }));
-        // Create Razorpay order
-        const options = {
-            amount: amount * 100, // in paise
-            currency: "INR",
-            receipt: `receipt_${Date.now()}`,
+//         const userId = req.userId; // From auth middleware
+//        console.log("Creating order for user:", items);
+//         //const formattedItems=items
+//         const formattedItems = items.map((item) => ({
+//             product: item.productId,            
+//             name: item.product.productName,      
+//             price: item.product.price,            
+//             quantity: item.quantity,       
+//             images: item.product.images[0],      
+//     }));
+//         // Create Razorpay order
+//         const options = {
+//             amount: amount * 100, // in paise
+//             currency: "INR",
+//             receipt: `receipt_${Date.now()}`,
+//         };
+
+//         const order = await razorpay.orders.create(options);
+
+//         // Save order in DB
+//         const newOrder = new Order({
+//             user: userId,
+//             amount,
+//             address,
+//             items: formattedItems,
+//             currency: "INR",
+//             razorpayOrderId: order.id,
+//             status: "Failed",
+//         });
+
+//         await newOrder.save();
+
+//         res.json({
+//             success: true,
+//            orderId: order.id,
+//             amount: order.amount,
+//             currency: order.currency,
+//             key: process.env.RAZORPAY_KEY_ID,
+//         });
+//     } catch (error) {
+//         console.error("Error creating Razorpay order:", error);
+//         res.status(500).json({ success: false, error: error.message });
+//     }
+// };
+exports.createOrder = async (req, res) => {
+  try {
+    const { amount, items, address } = req.body;
+    const userId = req.userId; // From auth middleware
+
+    console.log("Creating order for user:", userId);
+
+    // ✅ Fetch full product details for each item
+    const formattedItems = await Promise.all(
+      items.map(async (item) => {
+        const product = await Product.findById(item.productId);
+        if (!product) {
+          throw new Error(`Product not found: ${item.productId}`);
+        }
+
+        return {
+          product: product._id,
+          name: product.productName,
+          price: product.price,
+          quantity: item.quantity,
+          images: product.images?.[0] || null,
         };
+      })
+    );
 
-        const order = await razorpay.orders.create(options);
+    // ✅ Create Razorpay order
+    const options = {
+      amount: amount * 100, // Convert to paise
+      currency: "INR",
+      receipt: `receipt_${Date.now()}`,
+    };
 
-        // Save order in DB
-        const newOrder = new Order({
-            user: userId,
-            amount,
-            address,
-            items: formattedItems,
-            currency: "INR",
-            razorpayOrderId: order.id,
-            status: "Failed",
-        });
+    const order = await razorpay.orders.create(options);
 
-        await newOrder.save();
+    // ✅ Save order in DB
+    const newOrder = new Order({
+      user: userId,
+      amount,
+      address,
+      items: formattedItems,
+      currency: "INR",
+      razorpayOrderId: order.id,
+      status: "Failed", // Initially failed until verified
+    });
 
-        res.json({
-            success: true,
-           orderId: order.id,
-            amount: order.amount,
-            currency: order.currency,
-            key: process.env.RAZORPAY_KEY_ID,
-        });
-    } catch (error) {
-        console.error("Error creating Razorpay order:", error);
-        res.status(500).json({ success: false, error: error.message });
-    }
+    await newOrder.save();
+
+    // ✅ Send response
+    res.json({
+      success: true,
+      orderId: order.id,
+      amount: order.amount,
+      currency: order.currency,
+      key: process.env.RAZORPAY_KEY_ID,
+    });
+  } catch (error) {
+    console.error("Error creating Razorpay order:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
 };
 
 // ✅ Verify payment and update DB
