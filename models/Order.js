@@ -1,27 +1,72 @@
+// const mongoose = require("mongoose");
+
+// const OrderSchema = new mongoose.Schema(
+//     {
+//         user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+//         items:[
+//        // {type : Object , required : true},
+//             {
+//                 product: { type: mongoose.Schema.Types.ObjectId, ref: "Product" },
+//                 quantity: { type: Number, default: 1 },
+//                 price: { type: Number, required: true },
+//                  name: { type: String, required: true },
+//                     images: { type: String },
+//             },
+//         ],
+//         address : {type : Object , required : true},
+//         amount: { type: Number, required: true },
+//         status: { type: String, default: "pending" },
+//         deliveryStatus: { type: String, default: "processing" },
+//         razorpayOrderId: { type: String },
+//         razorpayPaymentId: { type: String },
+//         razorpaySignature: { type: String },
+//     },
+//     { timestamps: true }
+// );
+
+// module.exports = mongoose.model("Order", OrderSchema);
 const mongoose = require("mongoose");
 
 const OrderSchema = new mongoose.Schema(
-    {
-        user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
-        items:[
-       // {type : Object , required : true},
-            {
-                product: { type: mongoose.Schema.Types.ObjectId, ref: "Product" },
-                quantity: { type: Number, default: 1 },
-                price: { type: Number, required: true },
-                 name: { type: String, required: true },
-                    images: { type: String },
-            },
-        ],
-        address : {type : Object , required : true},
-        amount: { type: Number, required: true },
-        status: { type: String, default: "pending" },
-        deliveryStatus: { type: String, default: "processing" },
-        razorpayOrderId: { type: String },
-        razorpayPaymentId: { type: String },
-        razorpaySignature: { type: String },
+  {
+    user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+    items: [
+      {
+        product: { type: mongoose.Schema.Types.ObjectId, ref: "Product" },
+        quantity: { type: Number, default: 1 },
+        price: { type: Number, required: true },
+        name: { type: String, required: true },
+        images: { type: String },
+      },
+    ],
+    address: { type: Object, required: true },
+
+    // 💰 Payment Details
+    amount: { type: Number, required: true }, // Total amount
+    advanceAmount: { type: Number, default: 0 }, // Advance paid (if any)
+    paidAmount: { type: Number, default: 0 }, // Total paid so far
+    remainingAmount: { type: Number, default: 0 },
+
+    paymentType: {
+      type: String,
+      enum: ["full", "advance"],
+      default: "full",
     },
-    { timestamps: true }
+    paymentStatus: {
+      type: String,
+      enum: ["Pending", "Partially Paid", "Fully Paid", "Failed"],
+      default: "Pending",
+    },
+
+    status: { type: String, default: "pending" },
+    deliveryStatus: { type: String, default: "processing" },
+
+    // Razorpay Details
+    razorpayOrderId: { type: String },
+    razorpayPaymentId: { type: String },
+    razorpaySignature: { type: String },
+  },
+  { timestamps: true }
 );
 
 module.exports = mongoose.model("Order", OrderSchema);

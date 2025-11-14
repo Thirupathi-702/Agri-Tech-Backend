@@ -55,7 +55,7 @@ exports.createProduct = async (req, res) => {
 
     // Save to DB
     await newProduct.save();
-    console.log("New product created:", newProduct);
+   // console.log("New product created:", newProduct);
     return successResponse(res, "Product created successfully", newProduct, 201);
 
   } catch (error) {
